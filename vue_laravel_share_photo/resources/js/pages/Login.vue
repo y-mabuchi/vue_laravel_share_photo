@@ -10,6 +10,22 @@
     <!-- login form -->
     <div class="panel" v-show="tab === 1">
       <form class="form" @submit.prevent="login">
+        <!-- login errors -->
+        <div v-if="loginErrors" class="errors">
+          <!-- email errors -->
+          <ul v-if="loginErrors.email">
+            <li v-for="msg in loginErrors.email" :key="msg">{{ msg }}</li>
+          </ul>
+          <!-- /email errors -->
+
+          <!-- password errors -->
+          <ul v-if="loginErrors.password">
+            <li v-for="msg in loginErrors.password" :key="msg">{{ msg }}</li>
+          </ul>
+          <!-- /password errors -->
+        </div>
+        <!-- /login errors -->
+
         <!-- email -->
         <label for="login-email">Email</label>
         <input type="text" class="form__item" id="login-email" v-model="loginForm.email" />
@@ -32,6 +48,28 @@
     <!-- register form -->
     <div class="panel" v-show="tab === 2">
       <form class="form" @submit.prevent="register">
+        <!-- register errors -->
+        <div v-if="registerErrors" class="errors">
+          <!-- name errors -->
+          <ul v-if="registerErrors.name">
+            <li v-for="msg in registerErrors.name" :key="msg">{{ msg }}</li>
+          </ul>
+          <!-- /name errors -->
+
+          <!-- email errors -->
+          <ul v-if="registerErrors.email">
+            <li v-for="msg in registerErrors.email" :key="msg">{{ msg }}</li>
+          </ul>
+          <!-- /email errors -->
+
+          <!-- password errors -->
+          <ul v-if="registerErrors.password">
+            <li v-for="msg in registerErrors.password" :key="msg">{{ msg }}</li>
+          </ul>
+          <!-- /password errors -->
+        </div>
+        <!-- /register errors -->
+
         <!-- username -->
         <label for="username">Name</label>
         <input type="text" class="form__item" id="username" v-model="registerForm.name" />
@@ -88,6 +126,12 @@ export default {
   computed: {
     apiStatus() {
       return this.$store.state.auth.apiStatus;
+    },
+    loginErrors() {
+      return this.$store.state.auth.loginErrorMessages;
+    },
+    registerErrors() {
+      return this.$store.state.auth.registerErrorMessages;
     }
   },
   methods: {
@@ -104,9 +148,18 @@ export default {
       // authストアのregisterアクションを呼び出す
       await this.$store.dispatch("auth/register", this.registerForm);
 
-      // トップページに移動する
-      this.$router.push("/");
+      if (this.apiStatus) {
+        // トップページに移動する
+        this.$router.push("/");
+      }
+    },
+    clearError() {
+      this.$store.commit("auth/setLoginErrorMessages", null);
+      this.$store.commit("auth/setRegisterErrorMessages", null);
     }
+  },
+  created() {
+    this.clearError();
   }
 };
 </script>

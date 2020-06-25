@@ -1,8 +1,10 @@
-import { OK } from '../util'
+import { OK, CREATED, UNPROCESSABLE_ENTITY } from '../util'
 
 const state = {
   user: null,
-  apiStats: null
+  apiStatus: null,
+  loginErrorMessages: null,
+  registerErrorMessages: null
 }
 
 const getters = {
@@ -15,21 +17,51 @@ const mutations = {
     state.user = user
   },
   setApiStatus(state, status) {
-    state.apiStats = status
+    state.apiStatus = status
+  },
+  setLoginErrorMessages(state, messages) {
+    state.loginErrorMessages = messages
+  },
+  setRegisterErrorMessages(state, messages) {
+    state.registerErrorMessages = messages
   }
 }
 
 const actions = {
+  // 会員登録
   async register(context, data) {
+    // 最初にAPIステータスをリセット
+    context.commit('setApiStatus', null)
+
+    // APIにアクセス
     const response = await axios.post('/api/register', data)
-    context.commit('setUser', response.data)
+
+    // 登録成功の場合
+    if (response.status === CREATED) {
+      context.commit('setApiStatus', true)
+      context.commit('setUser', response.data)
+      return false
+    }
+
+    // 失敗の場合
+    context.commit('setApiStatus', false)
+
+    if (response.status === UNPROCESSABLE_ENTITY) {
+      // バリデーションエラーの場合
+      context.commit('setRegisterErrorMessages', response.data.errors)
+    } else {
+      // システムエラーの場合
+      context.commit('error/setCode', response.status, { root: true })
+    }
   },
+
+  // ログイン
   async login(context, data) {
     // 最初は、APIステータスにnullをセット
     context.commit('setApiStatus', null)
 
     // API通信の結果を取得
-    const response = await axios.post('/api/login', data).catch(err => err.response || err)
+    const response = await axios.post('/api/login', data)
 
     if (response.status === OK) {
       // 成功だったらAPIステータスにtrueをセット
@@ -40,17 +72,55 @@ const actions = {
 
     // 失敗だったらAPIステータスにfalseをセット
     context.commit('setApiStatus', false)
-    // 別モジュールのミューテーションを呼び出し(第三引数に{root: trure}が必要)
+
+    if (response.status === UNPROCESSABLE_ENTITY) {
+      // バリデーションの場合はルートコンポーネントに渡さない
+      context.commit('setLoginErrorMessages', response.data.errors)
+    } else {
+      // 別モジュールのミューテーションを呼び出し(第三引数に{root: trure}が必要)
+      context.commit('error/setCode', response.status, { root: true })
+    }
+  },
+
+  // ログアウト
+  async logout(context) {
+    // APIステータスをリセット
+    context.commit('setApiStatus', null)
+
+    // APIにアクセス
+    const response = await axios.post('/api/logout')
+
+    // 成功の場合
+    if (response.status === OK) {
+      context.commit('setApiStatus', true)
+      context.commit('setUser', null)
+      return false
+    }
+
+    // 失敗の場合
+    context.commit('setApiStatus', false)
     context.commit('error/setCode', response.status, { root: true })
   },
-  async logout(context) {
-    const response = await axios.post('/api/logout')
-    context.commit('setUser', null)
-  },
+
+  // ログインユーザーチェック
   async currentUser(context) {
+    // APIステータスをリセット
+    context.commit('setApiStatus', null)
+
+    // APIにアクセス
     const response = await axios.get('/api/user')
     const user = response.data || null
-    context.commit('setUser', user)
+
+    // 成功の場合
+    if (response.status === OK) {
+      context.commit('setApiStatus', true)
+      context.commit('setUser', user)
+      return false
+    }
+
+    // 失敗の場合
+    context.commit('setApiStatus', false)
+    context.commit('error/setCode', response.status, { root: true })
   },
 }
 
